@@ -182,3 +182,134 @@ docker network inspect bridge
     }
 ]
 ```
+
+#### Grep 패턴으로 컨테이너 외부에서 ip 주소 확인해보기
+
+```
+docker inspect sys-container-1 | grep -i ipaddress
+```
+
+```
+"SecondaryIPAddresses": null,
+"IPAddress": "172.17.0.2",
+        "IPAddress": "172.17.0.2",
+```
+
+---
+
+## Nginx image를 통해 구현된 컨테이너
+
+- Nginx은 WebServer 용도로 많이 사용
+- Nginx는 Reverse proxy 구현 가능
+- Nginx는 API 트래픽 처리가 가능한 고급 http 기능 보유, API Gateway 구현 가능
+
+#### 이미지 Pull
+
+```
+docker pull nginx:1.25.0-alpine
+```
+
+이미지는 Dockerfile로 만들게 된다.
+
+#### 이미지 히스토리 확인
+
+```
+docker image history nginx:1.25.0-alpine
+```
+
+```
+IMAGE          CREATED         CREATED BY                                       SIZE      COMMENT
+2e776a66a355   23 months ago   /bin/sh -c set -x     && apkArch="$(cat /etc…   30.9MB
+<missing>      23 months ago   /bin/sh -c #(nop)  ENV NJS_VERSION=0.7.12        0B
+<missing>      23 months ago   /bin/sh -c #(nop)  CMD ["nginx" "-g" "daemon…   0B
+<missing>      23 months ago   /bin/sh -c #(nop)  STOPSIGNAL SIGQUIT            0B
+<missing>      23 months ago   /bin/sh -c #(nop)  EXPOSE 80                     0B
+<missing>      23 months ago   /bin/sh -c #(nop)  ENTRYPOINT ["/docker-entr…   0B
+<missing>      23 months ago   /bin/sh -c #(nop) COPY file:e57eef017a414ca7…   16.4kB
+<missing>      23 months ago   /bin/sh -c #(nop) COPY file:36429cfeeb299f99…   12.3kB
+<missing>      23 months ago   /bin/sh -c #(nop) COPY file:5c18272734349488…   12.3kB
+<missing>      23 months ago   /bin/sh -c #(nop) COPY file:7b307b62e82255f0…   8.19kB
+<missing>      23 months ago   /bin/sh -c set -x     && addgroup -g 101 -S …   7.12MB
+<missing>      23 months ago   /bin/sh -c #(nop)  ENV PKG_RELEASE=1             0B
+<missing>      23 months ago   /bin/sh -c #(nop)  ENV NGINX_VERSION=1.25.0      0B
+<missing>      2 years ago     /bin/sh -c #(nop)  LABEL maintainer=NGINX Do…   0B
+<missing>      2 years ago     /bin/sh -c #(nop)  CMD ["/bin/sh"]               0B
+<missing>      2 years ago     /bin/sh -c #(nop) ADD file:e51d4089e73ad6dee…   8.14MB
+```
+
+EXPOSE 80 = 가상의 격리 공간에서 80번을 방화벽에서 오픈했다는 뜻 = 80번 포트로만 패킷을 전달할 수 있다.
+
+#### 실행
+
+```
+docker run -d -p 8001:80 --name=webserver1 nginx:1.25.0-alpine
+
+e412942e271421e100889f28bf5bfe77700408e0e36dd23938ecfadc3fa941d4
+```
+
+```
+docker ps -a
+CONTAINER ID   IMAGE                             COMMAND                   CREATED          STATUS                        PORTS                  NAMES
+e412942e2714   nginx:1.25.0-alpine               "/docker-entrypoint.…"   37 seconds ago   Up 36 seconds                 0.0.0.0:8001->80/tcp   webserver1
+```
+
+- 0.0.0.0:8081->80/tcp: 퍼블릭(모든 ip)에서 들어오는 8001번으로 패킷을 전달하면 컨테이너 내부의 80번에 들어오게 된다.
+
+##### 포트만 따로 확인하는 방법
+
+```
+docker port webserver1
+80/tcp -> 0.0.0.0:8001
+```
+
+#### nginx가 제대로 동작되는지 확인해보기
+
+```
+curl localhost:8001
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+
+#### Port 활성화 여부 확인
+
+```
+sudo lsof -i :8001
+
+COMMAND     PID   USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+com.docke 95984 devlee   53u  IPv6 0x9a80b8db06d5179c      0t0  TCP *:vcom-tunnel (LISTEN)
+```
+
+```
+ps -ef | grep 95984
+
+  501 95984 95977   0  7:13AM ??         0:30.19 /Applications/Docker.app/Contents/MacOS/com.docker.backend run
+  501 95994 95984   0  7:13AM ??         0:00.02 com.docker.dev-envs -watchdog
+  501 95996 95984   0  7:13AM ??         0:00.28 com.docker.build
+  501 95997 95984   0  7:13AM ??         0:08.82 /Applications/Docker.app/Contents/MacOS/Docker Desktop.app/Contents/MacOS/Docker Desktop --reason=open-tray --analytics-enabled=true --name=dashboard
+  501 96003 95984   0  7:13AM ??         0:00.53 /Applications/Docker.app/Contents/MacOS/com.docker.virtualization --kernel /Applications/Docker.app/Contents/Resources/linuxkit/kernel --cmdline init=/init loglevel=1 root=/dev/vdb rootfstype=erofs ro vsyscall=emulate panic=0 eth0.dhcp eth1.dhcp linuxkit.unified_cgroup_hierarchy=1 console=hvc0   virtio_net.disable_csum=1 vpnkit.connect=connect://2/1999 --boot /Applications/Docker.app/Contents/Resources/linuxkit/boot.img --disk /Users/devlee/Library/Containers/com.docker.docker/Data/vms/0/data/Docker.raw --networkType gvisor --macaddr-filename-prefix /Users/devlee/Library/Containers/com.docker.docker/Data/vms/0/macaddr --cpus 10 --memoryMiB 16384 --console-log /Users/devlee/Library/Containers/com.docker.docker/Data/log/vm/console.log --console /Users/devlee/Library/Containers/com.docker.docker/Data/vms/0/console.sock --api /Users/devlee/Library/Containers/com.docker.docker/Data/virtualization.sock --watchdog --virtiofs /Users --virtiofs /Volumes --virtiofs /private --virtiofs /tmp --virtiofs /var/folders --rosetta
+  501 17150 96982   0  8:01AM ttys009    0:00.00 grep --color=auto --exclude-dir=.bzr --exclude-dir=CVS --exclude-dir=.git --exclude-dir=.hg --exclude-dir=.svn --exclude-dir=.idea --exclude-dir=.tox --exclude-dir=.venv --exclude-dir=venv 95984
+```
+
+Docker Proxy는 NAT와 NAPT 기술을 갖고 있다.
