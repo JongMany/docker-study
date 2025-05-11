@@ -313,3 +313,47 @@ ps -ef | grep 95984
 ```
 
 Docker Proxy는 NAT와 NAPT 기술을 갖고 있다.
+
+#### nginx에 custom index.html 추가(복사)해주기
+
+scp 명령어: 서버 to 서버 원격 카피
+
+```
+docker cp index.html webserver1:/usr/share/nginx/html/index.html
+```
+
+이미지 복사하기
+
+```
+docker cp index2.html webserver1:/usr/share/nginx/html/index.html
+docker cp docker_logo.png webserver1:/usr/share/nginx/html/docker_logo.png
+```
+
+#### 웹소스를 보유한 이미지를 만들기
+
+도커 파일 만들기
+
+```
+vi Dockerfile
+
+FROM nginx:1.25.0-alpine
+COPY index2.html /usr/share/nginx/html/index.html
+COPY docker_logo.png /usr/share/nginx/html/docker_logo.png
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+Dockerfile 기반으로 이미지 빌드하기
+
+```
+docker build -t myweb:v1.0 .
+
+REPOSITORY                                TAG                                                                           IMAGE ID       CREATED          SIZE
+myweb                                     v1.0                                                                          4fa889faddeb   30 seconds ago   62.7MB
+```
+
+이미지 기반으로 컨테이너 실행하기
+
+```
+docker run -d --name=webserver2 -p 8002:80 myweb:v1.0
+```
