@@ -357,3 +357,78 @@ myweb                                     v1.0                                  
 ```
 docker run -d --name=webserver2 -p 8002:80 myweb:v1.0
 ```
+
+---
+
+## MySQL image를 통해 구현된 컨테이너
+
+이미지 pull
+
+```
+docker pull mysql:8.4.5
+```
+
+이미지 확인
+
+```
+docker images
+
+REPOSITORY    TAG                    IMAGE ID       CREATED          SIZE
+mysql         8.4.5                  2764fe573c51   3 weeks ago      1.06GB
+```
+
+이미지 기반 컨테이너 실행
+
+```
+docker run -it -e MYSQL_ROOT_PASSWORD=pass123# mysql:8.4.5  /bin/bash
+```
+
+- -e: 환경변수
+
+bash 내부에서 실행
+
+```
+cat /etc/os-release
+// 결과
+NAME="Oracle Linux Server"
+VERSION="9.5"
+ID="ol"
+ID_LIKE="fedora"
+VARIANT="Server"
+VARIANT_ID="server"
+VERSION_ID="9.5"
+PLATFORM_ID="platform:el9"
+PRETTY_NAME="Oracle Linux Server 9.5"
+ANSI_COLOR="0;31"
+CPE_NAME="cpe:/o:oracle:linux:9:5:server"
+HOME_URL="https://linux.oracle.com/"
+BUG_REPORT_URL="https://github.com/oracle/oracle-linux"
+
+ORACLE_BUGZILLA_PRODUCT="Oracle Linux 9"
+ORACLE_BUGZILLA_PRODUCT_VERSION=9.5
+ORACLE_SUPPORT_PRODUCT="Oracle Linux"
+ORACLE_SUPPORT_PRODUCT_VERSION=9.5
+
+# MySQL 실행
+rm -rf /var/lib/mysql/* (오류가 있는 경우에 실행)
+mysqld --initialize-insecure --user=mysql
+mysqld &
+
+```
+
+```
+docker exec -it faed7a4dc511 bash
+
+```
+
+```
+mysql -uroot
+show databases;
+create database dockerdb;
+show databases;
+
+cd /var/lib/mysql
+ls
+exit
+
+```
